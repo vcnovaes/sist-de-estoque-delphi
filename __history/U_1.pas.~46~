@@ -1,0 +1,204 @@
+unit U_1;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Data.DB,
+  FireDAC.Phys.PGDef, FireDAC.Stan.Intf, FireDAC.Stan.Option,
+  FireDAC.Stan.Error, FireDAC.UI.Intf, FireDAC.Phys.Intf, FireDAC.Stan.Def,
+  FireDAC.Stan.Pool, FireDAC.Stan.Async, FireDAC.Phys, FireDAC.Phys.PG,
+  FireDAC.VCLUI.Wait, FireDAC.Stan.Param, FireDAC.DatS, FireDAC.DApt.Intf,
+  FireDAC.DApt, FireDAC.Comp.DataSet, FireDAC.Comp.Client, Vcl.Grids,
+  Vcl.DBGrids, Vcl.StdCtrls, Vcl.Buttons;
+
+type
+  TForm1 = class(TForm)
+    Panel1: TPanel;
+    Panel2: TPanel;
+    DBGrid1: TDBGrid;
+    FDPhysPgDriverLink1: TFDPhysPgDriverLink;
+    FDConnection1: TFDConnection;
+    FDQuery1: TFDQuery;
+    DataSource1: TDataSource;
+    SpeedButton1: TSpeedButton;
+    labelstatus: TLabel;
+    painel1: TPanel;
+    Label1: TLabel;
+    Label3: TLabel;
+    Label4: TLabel;
+    Label5: TLabel;
+    Label6: TLabel;
+    Label8: TLabel;
+    Label9: TLabel;
+    Label10: TLabel;
+    t_descricao: TEdit;
+    btn_inserir: TButton;
+    t_cat: TEdit;
+    t_valor: TEdit;
+    t_qtd: TEdit;
+    t_id: TEdit;
+    new_qtd: TEdit;
+    new_valor: TEdit;
+    Panel3: TPanel;
+    Panel4: TPanel;
+    Panel5: TPanel;
+    btn_att: TButton;
+    Label7: TLabel;
+    Label11: TLabel;
+    Label12: TLabel;
+    Label13: TLabel;
+    Label15: TLabel;
+    Label16: TLabel;
+    Label17: TLabel;
+    procedure SpeedButton1Click(Sender: TObject);
+    procedure btn_inserirClick(Sender: TObject);
+    procedure btn_attClick(Sender: TObject);
+
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+
+implementation
+
+{$R *.dfm}
+procedure FitGrid(Grid: TDBGrid);
+const
+  C_Add=3;
+var
+  ds: TDataSet;
+  bm: TBookmark;
+  i: Integer;
+  w: Integer;
+  a: Array of Integer;
+begin
+  ds := Grid.DataSource.DataSet;
+  if Assigned(ds) then
+  begin
+    ds.DisableControls;
+    bm := ds.GetBookmark;
+    try
+      ds.First;
+      SetLength(a, Grid.Columns.Count);
+      while not ds.Eof do
+      begin
+        for I := 0 to Grid.Columns.Count - 1 do
+        begin
+          if Assigned(Grid.Columns[i].Field) then
+          begin
+            w :=  Grid.Canvas.TextWidth(ds.FieldByName(Grid.Columns[i].Field.FieldName).DisplayText);
+            if a[i] < w  then
+               a[i] := w ;
+          end;
+        end;
+        ds.Next;
+      end;
+      //if fieldwidth is smaller than Row 0 (field names) fix
+      for I := 0 to Grid.Columns.Count - 1 do
+      begin
+        w :=  Grid.Canvas.TextWidth(Grid.Columns[i].Field.FieldName);
+        if a[i] < w  then
+           a[i] := w ;
+      end;
+
+      for I := 0 to Grid.Columns.Count - 1 do
+        Grid.Columns[i].Width := a[i] + C_Add;
+        ds.GotoBookmark(bm);
+    finally
+      ds.FreeBookmark(bm);
+      ds.EnableControls;
+    end;
+  end;
+end;
+
+
+
+
+
+procedure TForm1.btn_attClick(Sender: TObject);
+begin
+WITH FDQuery1 do
+begin
+  close;
+  sql.Clear;
+  if new_qtd.Text = '' then
+  else
+  begin
+     sql.Add('update produto set qtd = '+ new_qtd.Text+
+  'where id = '+ T_id.Text +
+  ';');    ExecSql;
+  end;
+  if new_valor.Text = '' then
+  else
+  begin
+    sql.Clear;
+    sql.Add('update produto set  valor =' + new_valor.Text +
+  'where id = '+ T_id.Text +
+  ';');     ExecSql;
+  end;
+  close;
+  sql.Clear;
+  Open('select * from produto;');
+  FitGrid(DBGrid1);
+  //sql.Add('where id = '+ T_id.Text);
+
+
+end;
+end;
+
+procedure TForm1.btn_inserirClick(Sender: TObject);
+begin
+WITH FDQuery1 do
+  begin
+  close;
+  sql.Clear;
+  sql.Add('insert into produto(descricao, qtd, valor, categoria_id )');
+
+  sql.Add('values ( '+ QuotedStr(t_descricao.Text)+ ','
+                  + (t_qtd.Text)+ ','
+                  + (t_valor.Text)+ ','
+                  + (t_cat.Text)+');');
+  ExecSql;
+  close;
+  sql.Clear;
+  Open('select * from produto;');
+  FitGrid(DBGrid1);
+  end;
+end;
+
+
+procedure TForm1.SpeedButton1Click(Sender: TObject);
+begin
+  FDPhysPgDriverLink1.VendorHome := ExtractFilePath(Application.ExeName)+ 'pgbin32\';
+  FDPhysPgDriverLink1.VendorLib :=  'libpq.dll' ;
+  FDPhysPgDriverLink1.Release;
+
+   FDConnection1.Connected := false;
+   FDConnection1.Params.Values['database'] := 'mercado';
+   FDConnection1.Params.Values['user_name'] := 'postgres';
+   FDConnection1.Params.Values['password'] := '54321';
+   FDConnection1.Params.Values['server'] := 'localhost';
+   FDConnection1.Params.Values['port'] := '5432';
+   FDConnection1.Connected := true;
+   if FDConnection1.Connected then
+      labelstatus.Visible := true;
+      SpeedButton1.Visible := false;
+
+
+      WITH FDQuery1 do
+      begin
+        close;
+        sql.Clear;
+        Open('select * from produto');
+         FitGrid(DBGrid1);
+
+      end;
+end;
+
+end.
